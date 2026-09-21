@@ -1,31 +1,47 @@
+import os
 from flask import Flask, request, render_template
 import pandas as pd
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # limite de 5 MB por upload
 
-@app.route('/')
-def index():
-    return render_template('index.html')
 
-@app.route('/display', methods=['POST'])
-def display_file():
-    file = request.files['file']
-    if not file:
-        return "No file"
-
-    # Tenta ler o arquivo com diferentes codificações
-    try:
-        df = pd.read_csv(file, delimiter=";")
-    except UnicodeDecodeError:
-        file.seek(0)  # Reseta o ponteiro do arquivo
+def ler_csv(stream):
+    """Tenta UTF-8 (com ou sem BOM do Excel) e cai para Latin-1.
+    sep=None detecta automaticamente ';' ou ','."""
+    for enc in ("utf-8-sig", "latin-1"):
         try:
-            df = pd.read_csv(file, encoding='latin1', delimiter=";")
+            stream.seek(0)
+            return pd.read_csv(stream, sep=None, engine="python", encoding=enc)
         except UnicodeDecodeError:
-            file.seek(0)  # Reseta o ponteiro do arquivo
-            df = pd.read_csv(file, encoding='ISO-8859-1', delimiter=";")
+            continue
+    raise ValueError("Não foi possível decodificar o arquivo.")
 
-    # Renderiza o template com os dados do arquivo CSV
-    return render_template('display.html', tables=[df.to_html(classes='data')], titles=df.columns.values)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/display", methods=["POST"])
+def display_file():
+    file = request.files.get("file")
+    if not file or file.filename == "":
+        return render_template("index.html", erro="Selecione um arquivo CSV."), 400
+    try:
+        df = ler_csv(file.stream)
+    except Exception as e:
+        return render_template("index.html", erro=f"Erro ao ler o CSV: {e}"), 400
+
+    tabela = df.to_html(classes="data", index=False, na_rep="")
+    return render_template("display.html", tabela=tabela)
+
+
+@app.errorhandler(413)
+def arquivo_grande(_):
+    return render_template("index.html", erro="Arquivo maior que 5 MB."), 413
+
+
+if __name__ == "__main__":
+    # Só roda localmente. No Azure, quem sobe a app é o gunicorn.
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

@@ -1,25 +1,17 @@
 <!doctype html>
-<html>
-    <head>
-        <title>Visualização dos dados</title>
-        <style>
-            .data {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            .data th, .data td {
-                border: 1px solid black;
-                padding: 8px;
-                text-align: left;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>Conteudo do arquivo CSV</h1>
-        {% for table in tables %}
-            {{ table|safe }}
-        {% endfor %}
-        <br>
-        <a href="/">Enviar outro arquivo</a>
-    </body>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visualização dos dados</title>
+  <style>
+    .data { width: 100%; border-collapse: collapse; }
+    .data th, .data td { border: 1px solid #000; padding: 8px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Conteúdo do arquivo CSV</h1>
+  {{ tabela|safe }}
+  <p><a href="/">Enviar outro arquivo</a></p>
+</body>
 </html>
